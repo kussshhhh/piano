@@ -3,6 +3,8 @@ import time
 import platform
 import numpy as np
 import sounddevice as sd 
+import threading
+from pynput import keyboard
 
 
 
@@ -62,9 +64,19 @@ def play_note(key, duration = 0.5):
     samples = (samples * 32767 / np.max(np.abs(samples)).astype(np.int16))
 
     sd.play(samples, samplerate=44100)
-    sd.wait()
+    # sd.wait()
 
+def on_press(key):
+    try:
+        k = key.char.lower()
+        if k in notes:
+            threading.Thread(target=play_note, args = (k,)).start()
+    except AttributeError:
+        pass
 
+def on_release(key):
+    if key == keyboard.Key.esc:
+        return False
 
 
 def draw_piano():
@@ -101,17 +113,20 @@ def main():
 
     while True: 
         draw_piano()
-        key = get_char() 
 
-        if key == 'q':
-            print("Thanks for playing!")
-            break
-        elif key in notes: 
-            clear_screen()
-            play_note(key)
-        else:
-            clear_screen()
-            print("Invalid key try again.")
+        with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+            listener.join()
+        # key = get_char() 
+
+        # if key == 'q':
+        #     print("Thanks for playing!")
+        #     break
+        # elif key in notes: 
+        #     clear_screen()
+        #     play_note(key)
+        # else:
+        #     clear_screen()
+        #     print("Invalid key try again.")
 
 if __name__ == "__main__":
     main()
