@@ -1,7 +1,11 @@
 import os 
 import time
-import platform 
-from pysinewave import SineWave
+import platform
+import numpy as np
+import sounddevice as sd 
+
+
+
 if platform.system() == 'Windows':
     import msvcrt
 else:
@@ -30,17 +34,37 @@ notes = {
 def clear_screen() :
     os.system('cls' if platform.system() == 'Windows' else 'clear') 
 
-sinewave = SineWave(pitch = 0, pitch_per_second = 100)
+def generate_note(freq, duration, sample_rate=44100):
+    t = np.linspace(0, duration, int(sample_rate*duration), False)
 
-def play_note(frequency):
+    #fundamental frequency
+    note = np.sin(2 * np.pi * freq * t)
 
-    print(f"Playing note at  {frequency} Hz") 
-    sinewave.set_pitch(frequency)
-    sinewave.play()
-    time.sleep(0.3)
-    sinewave.stop()
+    note += 0.5 * np.sin(2*np.pi*freq*2*t)
+    note += 0.3 * np.sin(2*np.pi*freq*3*t)
+    note += 0.2 * np.sin(2*np.pi*freq*4*t)
+
+    envelope = np.exp(-t * 5)
+    note *= envelope
+
+    return note
+
+
+def play_note(key, duration = 0.5):
+
+    if key not in notes:
+        print(f"Note '{key}' not found in the dictionary")
+        return
     
-    # time.sleep(0.3) 
+    frequency = notes[key]
+    samples = generate_note(frequency, duration)
+
+    samples = (samples * 32767 / np.max(np.abs(samples)).astype(np.int16))
+
+    sd.play(samples, samplerate=44100)
+    sd.wait()
+
+
 
 
 def draw_piano():
@@ -84,7 +108,7 @@ def main():
             break
         elif key in notes: 
             clear_screen()
-            play_note(notes[key])
+            play_note(key)
         else:
             clear_screen()
             print("Invalid key try again.")
