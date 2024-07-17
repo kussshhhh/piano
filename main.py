@@ -40,14 +40,36 @@ def generate_note(freq, duration, sample_rate=44100):
     t = np.linspace(0, duration, int(sample_rate*duration), False)
 
     #fundamental frequency
-    note = np.sin(2 * np.pi * freq * t)
+    pitch_bend = 1 + np.exp(-t * 50) * 0.01 
+    note = np.sin(2 * np.pi * freq * t * pitch_bend)
 
-    note += 0.5 * np.sin(2*np.pi*freq*2*t)
-    note += 0.3 * np.sin(2*np.pi*freq*3*t)
-    note += 0.2 * np.sin(2*np.pi*freq*4*t)
 
-    envelope = np.exp(-t * 5)
+    note += 0.3 * np.sin(2*np.pi*freq*2*t)
+    note += 0.15 * np.sin(2*np.pi*freq*3*t)
+    note += 0.075 * np.sin(2*np.pi*freq*4*t)
+
+    attack = 0.005
+    decay = 0.1
+    sustain_level = 0.7
+    release = 0.3 
+
+    envelope = np.zeros_like(t)
+    attack_samples = int(attack * sample_rate)
+    decay_samples = int(decay * sample_rate)
+    release_samples = int(release * sample_rate)
+    sustain_samples = len(t) - attack_samples - decay_samples - release_samples
+
+    envelope[:attack_samples] = np.linspace(0, 1, attack_samples)
+    envelope[attack_samples:attack_samples+decay_samples] = np.linspace(1, sustain_level, decay_samples)
+    envelope[attack_samples+decay_samples:attack_samples+decay_samples+sustain_samples] = sustain_level
+    envelope[attack_samples+decay_samples+sustain_samples:] = np.linspace(sustain_level, 0, release_samples)
+
     note *= envelope
+    
+    noise = np.random.normal(0, 0.005, len(note))
+    note += noise
+
+    note = note/np.max(np.abs(note))
 
     return note
 
@@ -81,14 +103,14 @@ def on_release(key):
 
 def draw_piano():
     print("\n")
-    print("  W   E       T   Y   U       O")
+    print("  W   E      T   Y   U      O")
     print(" ┌─┐ ┌─┐    ┌─┐ ┌─┐ ┌─┐    ┌─┐")
     print(" │ │ │ │    │ │ │ │ │ │    │ │")
     print(" │ │ │ │    │ │ │ │ │ │    │ │")
     print(" └─┘ └─┘    └─┘ └─┘ └─┘    └─┘")
     print("┌───┬───┬───┬───┬───┬───┬───┬───┬───┐")
     print("│ A │ S │ D │ F │ G │ H │ J │ K │ L │")
-    print("└───┴───┴───┴───┴───┴───┴───┴───┴───┘")
+    print("└───┴───┴───┴───┴───┴───┴───┴───┴───┘") 
 
 
 def get_char():
@@ -116,7 +138,7 @@ def main():
 
         with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
             listener.join()
-        # key = get_char() 
+        # key = get_char()  
 
         # if key == 'q':
         #     print("Thanks for playing!")
